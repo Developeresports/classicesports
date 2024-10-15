@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login and Register with Validations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: white;
+            width: 400px;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #4285F4;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .form-group label {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input[type="password"] {
+            padding-right: 40px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            top: 35px;
+            right: 10px;
+            cursor: pointer;
+        }
+
+        .btn {
+            background-color: #4285F4;
+            color: white;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #357ae8;
+        }
+
+        .toggle-link {
+            text-align: center;
+            margin-top: 15px;
+            color: #4285F4;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .error-message, .success-message {
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .error-message {
+            color: #e74c3c;
+        }
+
+        .success-message {
+            color: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="authContainer">
+        <h2 id="formTitle">Login</h2>
+
+        <div id="errorMessage" class="error-message">Error occurred</div>
+        <div id="successMessage" class="success-message">Success!</div>
+
+        <!-- Login / Register Form -->
+        <div id="formContent">
+            <!-- For Registration, show Name and Username fields -->
+            <div id="extraFields" style="display: none;">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Choose a username">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Enter your email">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password">
+                <span class="toggle-password" id="togglePassword">👁️</span>
+            </div>
+
+            <button class="btn" id="submitBtn">Login</button>
+        </div>
+
+        <div class="toggle-link" id="toggleForm">Don't have an account? Register</div>
+    </div>
+
+    <script type="module">
+        // Import Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+        import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD0i-Llf9c-rnSrBh-qAUpLXQ1TRAUWbTU",
+            authDomain: "tournament-63347.firebaseapp.com",
+            databaseURL: "https://tournament-63347-default-rtdb.firebaseio.com",
+            projectId: "tournament-63347",
+            storageBucket: "tournament-63347.appspot.com",
+            messagingSenderId: "95556413141",
+            appId: "1:95556413141:web:46f8d32a9729e96f61645c",
+            measurementId: "G-PT1SGJ4JSG"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth();
+        const database = getDatabase(app);
+
+        // Elements
+        const formTitle = document.getElementById('formTitle');
+        const emailField = document.getElementById('email');
+        const passwordField = document.getElementById('password');
+        const nameField = document.getElementById('name');
+        const usernameField = document.getElementById('username');
+        const submitBtn = document.getElementById('submitBtn');
+        const toggleFormLink = document.getElementById('toggleForm');
+        const extraFields = document.getElementById('extraFields');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const togglePassword = document.getElementById('togglePassword');
+
+        let isLoginMode = true;
+
+        // Toggle between login and register
+        toggleFormLink.addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            if (isLoginMode) {
+                formTitle.innerText = 'Login';
+                submitBtn.innerText = 'Login';
+                toggleFormLink.innerText = "Don't have an account? Register";
+                extraFields.style.display = 'none';
+            } else {
+                formTitle.innerText = 'Register';
+                submitBtn.innerText = 'Register';
+                toggleFormLink.innerText = 'Already have an account? Login';
+                extraFields.style.display = 'block';
+            }
+        });
+
+        // Show/Hide password toggle
+        togglePassword.addEventListener('click', () => {
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+        });
+
+        // Email validation function
+        function isValidEmail(email) {
+            const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            return emailPattern.test(email);
+        }
+
+        // Submit button event
+        submitBtn.addEventListener('click', () => {
+            const email = emailField.value;
+            const password = passwordField.value;
+            const name = nameField.value;
+            const username = usernameField.value;
+
+            // Validate email
+            if (!isValidEmail(email)) {
+                errorMessage.textContent = "Please enter a valid email address.";
+                errorMessage.style.display = 'block';
+                successMessage.style.display = 'none';
+                return;
+            }
+
+            if (isLoginMode) {
+                // Login user
+                signInWithEmailAndPassword(auth, email, password)
+                    .then((userCredential) => {
+                        const userId = userCredential.user.uid;
+                        successMessage.textContent = "Login successful!";
+                        successMessage.style.display = 'block';
+                        errorMessage.style.display = 'none';
+
+                        // Fetch user data from Realtime Database
+                        const dbRef = ref(database);
+                        get(child(dbRef, `users/${userId}`))
+                            .then((snapshot) => {
+                                if (snapshot.exists()) {
+                                    console.log("User data:", snapshot.val());
+                                } else {
+                                    console.log("No user data available");
+                                }
+                            })
+                            .catch((error) => {
+                                console.error("Error getting user data:", error);
+                            });
+                    })
+                    .catch(error => {
+                        errorMessage.textContent = error.message;
+                        errorMessage.style.display = 'block';
+                        successMessage.style.display = 'none';
+                    });
+            } else {
+                // Register
+                // Register user
+                if (!name || !username) {
+                  errorMessage.textContent = "Please fill in all fields.";
+                  errorMessage.style.display = 'block';
+                  successMessage.style.display = 'none';
+                  return;
+                }
+
+                createUserWithEmailAndPassword(auth, email, password)
+                  .then((userCredential) => {
+                    const userId = userCredential.user.uid;
+                    successMessage.textContent = "Registration successful! Please verify your email.";
+                    successMessage.style.display = 'block';
+                    errorMessage.style.display = 'none';
+
+                    // Send verification email
+                    sendEmailVerification(userCredential.user)
+                      .then(() => {
+                        console.log("Verification email sent to:", email);
+                      })
+                      .catch((error) => {
+                        console.error("Error sending email verification:", error);
+                      });
+
+                    // Save user data to Realtime Database
+                    set(ref(database, 'users/' + userId), {
+                        name: name,
+                        username: username,
+                        email: email
+                      })
+                      .then(() => {
+                        console.log("User registered and data saved.");
+                      })
+                      .catch((error) => {
+                        console.error("Error saving user data:", error);
+                      });
+                  })
+                  .catch(error => {
+                    errorMessage.textContent = error.message;
+                    errorMessage.style.display = 'block';
+                    successMessage.style.display = 'none';
+                  });
+                }
+                });
+                </script>
+
+                </body> 
+                </html>
